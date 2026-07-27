@@ -8,75 +8,56 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="", intents=intents)
 
 PRESET_SONGS = [
-    {
-        'title': 'آجي نرويلك', 
-        'url': 'https://www.youtube.com/watch?v=N4T_r6i4mYQ'
-    },
-    {
-        'title': 'فالقلب حاضرة', 
-        'url': 'https://www.youtube.com/watch?v=XSNGi95Dp80'
-    },
-    {
-        'title': 'فالجيب', 
-        'url': 'https://www.youtube.com/watch?v=_mLBgoFJGV8'
-    },
-    {
-        'title': 'FIDÉLITÉ [Live]', 
-        'url': 'https://www.youtube.com/watch?v=GUuXt7g2dT4'
-    },
-    {
-        'title': 'الحايك مطروز', 
-        'url': 'https://www.youtube.com/watch?v=wGojegOFdDI'
-    },
-    {
-        'title': 'قاصد بأنغامي', 
-        'url': 'https://www.youtube.com/watch?v=IrZNobnKyYQ'
-    },
-    {
-        'title': 'La Stella Brillerà', 
-        'url': 'https://www.youtube.com/watch?v=JhCDliMUxuM'
-    }
+    {'title': 'آجي نرويلك', 'url': 'https://www.youtube.com/watch?v=N4T_r6i4mYQ'},
+    {'title': 'فالقلب حاضرة', 'url': 'https://www.youtube.com/watch?v=XSNGi95Dp80'},
+    {'title': 'فالجيب', 'url': 'https://www.youtube.com/watch?v=_mLBgoFJGV8'},
+    {'title': 'FIDÉLITÉ [Live]', 'url': 'https://www.youtube.com/watch?v=GUuXt7g2dT4'},
+    {'title': 'الحايك مطروز', 'url': 'https://www.youtube.com/watch?v=wGojegOFdDI'},
+    {'title': 'قاصد بأنغامي', 'url': 'https://www.youtube.com/watch?v=IrZNobnKyYQ'},
+    {'title': 'La Stella Brillerà', 'url': 'https://www.youtube.com/watch?v=JhCDliMUxuM'}
 ]
 
-class SongSelectView(discord.ui.View):
-    def __init__(self, songs):
-        super().__init__(timeout=180)
-        for i, song in enumerate(songs):
-            # تم اختصار النص لكي يظهر كاملاً وبشكل أنيق على الأزرار
-            button = discord.ui.Button(
-                label=f"{i+1}. {song['title']}", 
-                style=discord.ButtonStyle.danger,
-                custom_id=str(i)
+class SongSelect(discord.ui.Select):
+    def __init__(self):
+        options = []
+        for i, song in enumerate(PRESET_SONGS):
+            options.append(
+                discord.SelectOption(
+                    label=song['title'], 
+                    value=str(i), 
+                    description=f"تشغيل الأغنية رقم {i+1}"
+                )
             )
-            button.callback = self.button_callback
-            self.add_item(button)
+        super().__init__(placeholder='🎵 اختر الأغنية التي تريد تشغيلها...', min_values=1, max_values=1, options=options)
 
-    async def button_callback(self, interaction: discord.Interaction):
-        # الرد الفوري لمنع خطأ التفاعل (Échec de l'interaction)
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
+        print(f"تم اختيار الأغنية برقم: {self.values[0]}") # للتأكد في السجلات
 
-        song_index = int(interaction.data['custom_id'])
-        selected_song = PRESET_SONGS[song_index]
-        
-        if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.followup.send("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
-            return
-
-        voice_channel = interaction.user.voice.channel
-        voice_client = interaction.guild.voice_client
-        if voice_client is None:
-            voice_client = await voice_channel.connect()
-        else:
-            await voice_client.move_to(voice_channel)
-
-        await interaction.followup.send(f"⏳ جاري تجهيز وتشغيل: **{selected_song['title']}**...", ephemeral=True)
-
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'noplaylist': True,
-        }
-        
         try:
+            song_index = int(self.values[0])
+            selected_song = PRESET_SONGS[song_index]
+            
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                await interaction.followup.send("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
+                return
+
+            voice_channel = interaction.user.voice.channel
+            voice_client = interaction.guild.voice_client
+            
+            if voice_client is None:
+                voice_client = await voice_channel.connect()
+            else:
+                if voice_client.channel != voice_channel:
+                    await voice_client.move_to(voice_channel)
+
+            await interaction.followup.send(f"⏳ جاري تجهيز وتشغيل: **{selected_song['title']}**...", ephemeral=True)
+
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'noplaylist': True,
+            }
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(selected_song['url'], download=False)
                 audio_url = info['url']
@@ -96,7 +77,13 @@ class SongSelectView(discord.ui.View):
             await interaction.followup.send(f"🎶 يتم الآن تشغيل: **{selected_song['title']}**", ephemeral=False)
 
         except Exception as e:
-            await interaction.followup.send(f"❌ حدث خطأ أثناء تشغيل الأغنية: {e}", ephemeral=True)
+            print(f"❌ حدث خطأ: {e}")
+            await interaction.followup.send(f"❌ حدث خطأ: {e}", ephemeral=True)
+
+class SongSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(SongSelect())
 
 @bot.event
 async def on_ready():
@@ -110,17 +97,11 @@ async def on_message(message):
     if message.content.strip().lower() == "play!":
         embed = discord.Embed(
             title="🔴 Ultras Fanatic Reds - راديو الأغاني الرسمية",
-            description="اختر الأغنية التي تريد تشغيلها في الروم الصوتي:",
+            description="اختر من القائمة المنسدلة أدناه الأغنية التي تريد تشغيلها:",
             color=discord.Color.red()
         )
         
-        description_list = ""
-        for i, song in enumerate(PRESET_SONGS):
-            description_list += f"**{i+1}.** {song['title']}\n"
-        
-        embed.add_field(name="الأناشيد المتاحة:", value=description_list, inline=False)
-        
-        view = SongSelectView(PRESET_SONGS)
+        view = SongSelectView()
         await message.channel.send(embed=embed, view=view)
 
     await bot.process_commands(message)
