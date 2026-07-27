@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# تثبيت الحزم المطلوبة مباشرة وبدون استخدام requirements.txt
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir discord.py yt-dlp PyNaCl
 
 COPY . .
 
