@@ -5,85 +5,119 @@ import yt_dlp
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True
+bot = commands.Bot(command_prefix="", intents=intents)
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+# 📌 الأغاني والروابط الحقيقية والرسمية المتاحة فعلياً لـ Ultras Fanatic Reds
+PRESET_SONGS = [
+    {
+        'title': 'فالقلب حاضرة (La Banda Loca)', 
+        'url': 'https://www.youtube.com/watch?v=XSNGi95Dp80'
+    },
+    {
+        'title': 'فالجيب (La Banda Loca)', 
+        'url': 'https://www.youtube.com/watch?v=_mLBgoFJGV8'
+    },
+    {
+        'title': 'FIDÉLITÉ [Live]', 
+        'url': 'https://www.youtube.com/watch?v=GUuXt7g2dT4'
+    },
+    {
+        'title': 'الحايك مطروز', 
+        'url': 'https://www.youtube.com/watch?v=wGojegOFdDI'
+    },
+    {
+        'title': 'قاصد بأنغامي (La Banda Loca)', 
+        'url': 'https://www.youtube.com/watch?v=IrZNobnKyYQ'
+    },
+    {
+        'title': 'La Stella Brillerà', 
+        'url': 'https://www.youtube.com/watch?v=JhCDliMUxuM'
+    }
+]
+
+class SongSelectView(discord.ui.View):
+    def __init__(self, songs):
+        super().__init__(timeout=180)
+        
+        # إنشاء زر لكل أغنية حقيقية في القائمة
+        for i, song in enumerate(songs):
+            button = discord.ui.Button(
+                label=f"{i+1}. {song['title'][:20]}", 
+                style=discord.ButtonStyle.danger, # لون أحمر يناسب أجواء الفريق والألتراس
+                custom_id=str(i)
+            )
+            button.callback = self.button_callback
+            self.add_item(button)
+
+    async def button_callback(self, interaction: discord.Interaction):
+        song_index = int(interaction.data['custom_id'])
+        selected_song = PRESET_SONGS[song_index]
+        
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            await interaction.response.send_message("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
+            return
+
+        voice_channel = interaction.user.voice.channel
+        voice_client = interaction.guild.voice_client
+        if voice_client is None:
+            voice_client = await voice_channel.connect()
+        else:
+            await voice_client.move_to(voice_channel)
+
+        await interaction.response.send_message(f"⏳ جاري تجهيز وتشغيل: **{selected_song['title']}**...", ephemeral=True)
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'noplaylist': True,
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(selected_song['url'], download=False)
+                audio_url = info['url']
+
+            ffmpeg_options = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                'options': '-vn'
+            }
+
+            source = discord.FFmpegPCMAudio(audio_url, **ffmpeg_options)
+            
+            if voice_client.is_playing():
+                voice_client.stop()
+
+            voice_client.play(source, after=lambda e: print(f'انتهى التشغيل: {e}'))
+            
+            await interaction.followup.send(f"🎶 يتم الآن تشغيل: **{selected_song['title']}**", ephemeral=False)
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ أثناء تشغيل الأغنية: {e}", ephemeral=True)
 
 @bot.event
 async def on_ready():
-    print(f'تم تسجيل الدخول بنجاح باسم: {bot.user}')
+    print(f"تم تسجيل الدخول بنجاح باسم: {bot.user}")
 
-@bot.command(name='play', help='لتشغيل الأغنية بكتابة الاسم')
-async def play(ctx, *, search: str):
-    if not ctx.author.voice:
-        await ctx.send("❌ يجب أن تكون متصلاً بقناة صوتية أولاً!")
+@bot.event
+async def on_message(message):
+    if message.author.bot:
         return
 
-    voice_channel = ctx.author.voice.channel
-    
-    if ctx.voice_client is None:
-        await voice_channel.connect()
-    else:
-        await ctx.voice_client.move_to(voice_channel)
-
-    voice_client = ctx.guild.voice_client
-
-    await ctx.send(f"جاري البحث عن: **{search}** 🔍...")
-
-    # إعدادات مخصصة لاستخراج رابط الصوت المباشر بدون مشاكل
-    YDL_OPTIONS = {
-        'format': 'bestaudio/best',
-        'noplaylist': 'True',
-        'default_search': 'ytsearch1',
-        'ynosplit': True,
-    }
-
-    FFMPEG_OPTIONS = {
-        'options': '-vn',
-        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(search, download=False)
-            if 'entries' in info:
-                info = info['entries'][0]
-            
-            url = info.get('url', None)
-            title = info.get('title', 'مقطع صوتي')
-
-        if not url:
-            await ctx.send("❌ لم يتم العثور على نتائج لهذا البحث.")
-            return
-
-        source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
+    if message.content.strip().lower() == "play!":
+        embed = discord.Embed(
+            title="🔴 Ultras Fanatic Reds - راديو الأغاني الرسمية",
+            description="اختر الأغنية الحقيقية التي تريد تشغيلها في الروم الصوتي:",
+            color=discord.Color.red()
+        )
         
-        if voice_client.is_playing():
-            voice_client.stop()
-            
-        voice_client.play(source)
-        await ctx.send(f"🎶 جاري تشغيل الآن: **{title}**")
+        description_list = ""
+        for i, song in enumerate(PRESET_SONGS):
+            description_list += f"**{i+1}.** {song['title']}\n"
         
-    except Exception as e:
-        await ctx.send("❌ حدث خطأ أثناء تشغيل الصوت. تأكد من إعدادات البوت.")
-        print(f"Error: {e}")
+        embed.add_field(name="الأناشيد المتاحة:", value=description_list, inline=False)
+        
+        view = SongSelectView(PRESET_SONGS)
+        await message.channel.send(embed=embed, view=view)
 
-@bot.command(name='pause')
-async def pause(ctx):
-    if ctx.voice_client and ctx.voice_client.is_playing():
-        ctx.voice_client.pause()
-        await ctx.send("⏸️ تم إيقاف الأغنية مؤقتاً.")
+    await bot.process_commands(message)
 
-@bot.command(name='resume')
-async def resume(ctx):
-    if ctx.voice_client and ctx.voice_client.is_paused():
-        ctx.voice_client.resume()
-        await ctx.send("▶️ تم استئناف الأغنية.")
-
-@bot.command(name='leave')
-async def leave(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("👋 تم قطع الاتصال والخروج من القناة الصوتية.")
-
-bot.run(os.environ.get('DISCORD_TOKEN'))
+bot.run(os.getenv("TOKEN"))
