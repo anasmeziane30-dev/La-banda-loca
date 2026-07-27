@@ -3,12 +3,17 @@ import discord
 from discord.ext import commands
 import yt_dlp
 
+# إعدادات البوت والصلاحيات
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="", intents=intents)
 
-# 📌 الأغاني والروابط الحقيقية والرسمية المتاحة فعلياً لـ Ultras Fanatic Reds
+# 📌 الأغاني والروابط الحقيقية والرسمية المتاحة لـ Ultras Fanatic Reds (تمت إضافة أغنية آجي نرويلك)
 PRESET_SONGS = [
+    {
+        'title': 'آجي نرويلك', 
+        'url': 'https://www.youtube.com/watch?v=N4T_r6i4mYQ' # رابط أغنية آجي نرويلك
+    },
     {
         'title': 'فالقلب حاضرة (La Banda Loca)', 
         'url': 'https://www.youtube.com/watch?v=XSNGi95Dp80'
@@ -53,6 +58,7 @@ class SongSelectView(discord.ui.View):
         song_index = int(interaction.data['custom_id'])
         selected_song = PRESET_SONGS[song_index]
         
+        # التأكد من أن المستخدم متصل بروم صوتي
         if not interaction.user.voice or not interaction.user.voice.channel:
             await interaction.response.send_message("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
             return
@@ -97,6 +103,7 @@ class SongSelectView(discord.ui.View):
 async def on_ready():
     print(f"تم تسجيل الدخول بنجاح باسم: {bot.user}")
 
+# الحدث عند كتابة play!
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -120,4 +127,9 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-bot.run(os.getenv("TOKEN"))
+# التشغيل الآمن للتوكن مع فحص خلوه من القيم الفارغة
+token = os.getenv("TOKEN")
+if not token:
+    print("❌ خطأ: لم يتم العثور على متغير البيئة TOKEN.")
+else:
+    bot.run(token)
