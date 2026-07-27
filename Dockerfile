@@ -1,12 +1,17 @@
 FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# تثبيت الحزم مباشرة دفعة واحدة وبدون مشاكل
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir discord.py yt-dlp PyNaCl
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
