@@ -3,23 +3,21 @@ import discord
 from discord.ext import commands
 import yt_dlp
 
-# إعدادات البوت والصلاحيات
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="", intents=intents)
 
-# 📌 الأغاني والروابط الحقيقية والرسمية المتاحة لـ Ultras Fanatic Reds (تمت إضافة أغنية آجي نرويلك)
 PRESET_SONGS = [
     {
         'title': 'آجي نرويلك', 
-        'url': 'https://www.youtube.com/watch?v=N4T_r6i4mYQ' # رابط أغنية آجي نرويلك
+        'url': 'https://www.youtube.com/watch?v=N4T_r6i4mYQ'
     },
     {
-        'title': 'فالقلب حاضرة (La Banda Loca)', 
+        'title': 'فالقلب حاضرة', 
         'url': 'https://www.youtube.com/watch?v=XSNGi95Dp80'
     },
     {
-        'title': 'فالجيب (La Banda Loca)', 
+        'title': 'فالجيب', 
         'url': 'https://www.youtube.com/watch?v=_mLBgoFJGV8'
     },
     {
@@ -31,7 +29,7 @@ PRESET_SONGS = [
         'url': 'https://www.youtube.com/watch?v=wGojegOFdDI'
     },
     {
-        'title': 'قاصد بأنغامي (La Banda Loca)', 
+        'title': 'قاصد بأنغامي', 
         'url': 'https://www.youtube.com/watch?v=IrZNobnKyYQ'
     },
     {
@@ -43,24 +41,25 @@ PRESET_SONGS = [
 class SongSelectView(discord.ui.View):
     def __init__(self, songs):
         super().__init__(timeout=180)
-        
-        # إنشاء زر لكل أغنية حقيقية في القائمة
         for i, song in enumerate(songs):
+            # تم اختصار النص لكي يظهر كاملاً وبشكل أنيق على الأزرار
             button = discord.ui.Button(
-                label=f"{i+1}. {song['title'][:20]}", 
-                style=discord.ButtonStyle.danger, # لون أحمر يناسب أجواء الفريق والألتراس
+                label=f"{i+1}. {song['title']}", 
+                style=discord.ButtonStyle.danger,
                 custom_id=str(i)
             )
             button.callback = self.button_callback
             self.add_item(button)
 
     async def button_callback(self, interaction: discord.Interaction):
+        # الرد الفوري لمنع خطأ التفاعل (Échec de l'interaction)
+        await interaction.response.defer(ephemeral=True)
+
         song_index = int(interaction.data['custom_id'])
         selected_song = PRESET_SONGS[song_index]
         
-        # التأكد من أن المستخدم متصل بروم صوتي
         if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.response.send_message("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
+            await interaction.followup.send("❌ يجب عليك الدخول إلى روم صوتي أولاً!", ephemeral=True)
             return
 
         voice_channel = interaction.user.voice.channel
@@ -70,7 +69,7 @@ class SongSelectView(discord.ui.View):
         else:
             await voice_client.move_to(voice_channel)
 
-        await interaction.response.send_message(f"⏳ جاري تجهيز وتشغيل: **{selected_song['title']}**...", ephemeral=True)
+        await interaction.followup.send(f"⏳ جاري تجهيز وتشغيل: **{selected_song['title']}**...", ephemeral=True)
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -103,7 +102,6 @@ class SongSelectView(discord.ui.View):
 async def on_ready():
     print(f"تم تسجيل الدخول بنجاح باسم: {bot.user}")
 
-# الحدث عند كتابة play!
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -112,7 +110,7 @@ async def on_message(message):
     if message.content.strip().lower() == "play!":
         embed = discord.Embed(
             title="🔴 Ultras Fanatic Reds - راديو الأغاني الرسمية",
-            description="اختر الأغنية الحقيقية التي تريد تشغيلها في الروم الصوتي:",
+            description="اختر الأغنية التي تريد تشغيلها في الروم الصوتي:",
             color=discord.Color.red()
         )
         
@@ -127,7 +125,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# التشغيل الآمن للتوكن مع فحص خلوه من القيم الفارغة
 token = os.getenv("TOKEN")
 if not token:
     print("❌ خطأ: لم يتم العثور على متغير البيئة TOKEN.")
