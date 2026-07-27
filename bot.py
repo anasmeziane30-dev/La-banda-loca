@@ -13,7 +13,6 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     print(f'تم تسجيل الدخول بنجاح باسم: {bot.user}')
 
-# أمر التشغيل بالاسم !play (يمكنك كتابة جزء من الاسم فقط)
 @bot.command(name='play', help='لتشغيل الأغنية بكتابة الاسم')
 async def play(ctx, *, search: str):
     if not ctx.author.voice:
@@ -27,40 +26,47 @@ async def play(ctx, *, search: str):
     else:
         await ctx.voice_client.move_to(voice_channel)
 
-    server = ctx.guild
-    voice_client = server.voice_client
+    voice_client = ctx.guild.voice_client
 
     await ctx.send(f"جاري البحث عن: **{search}** 🔍...")
 
-    # إعدادات البحث والتشغيل عبر yt-dlp
+    # إعدادات مخصصة لاستخراج رابط الصوت المباشر بدون مشاكل
     YDL_OPTIONS = {
-        'format': 'bestaudio',
+        'format': 'bestaudio/best',
         'noplaylist': 'True',
         'default_search': 'ytsearch1',
-    }
-    
-    FFMPEG_OPTIONS = {
-        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-        'options': '-vn'
+        'ynosplit': True,
     }
 
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        try:
+    FFMPEG_OPTIONS = {
+        'options': '-vn',
+        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(search, download=False)
             if 'entries' in info:
                 info = info['entries'][0]
             
-            url2 = info['url']
-            source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+            url = info.get('url', None)
+            title = info.get('title', 'مقطع صوتي')
+
+        if not url:
+            await ctx.send("❌ لم يتم العثور على نتائج لهذا البحث.")
+            return
+
+        source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
+        
+        if voice_client.is_playing():
+            voice_client.stop()
             
-            if voice_client.is_playing():
-                voice_client.stop()
-                
-            voice_client.play(source)
-            await ctx.send(f"🎶 جاري تشغيل الآن: **{info.get('title', 'المقطع')}**")
-        except Exception as e:
-            await ctx.send("❌ حدث خطأ أثناء البحث أو تشغيل الأغنية.")
-            print(e)
+        voice_client.play(source)
+        await ctx.send(f"🎶 جاري تشغيل الآن: **{title}**")
+        
+    except Exception as e:
+        await ctx.send("❌ حدث خطأ أثناء تشغيل الصوت. تأكد من إعدادات البوت.")
+        print(f"Error: {e}")
 
 @bot.command(name='pause')
 async def pause(ctx):
@@ -80,5 +86,4 @@ async def leave(ctx):
         await ctx.voice_client.disconnect()
         await ctx.send("👋 تم قطع الاتصال والخروج من القناة الصوتية.")
 
-# تشغيل البوت بأمان من متغيرات البيئة
 bot.run(os.environ.get('DISCORD_TOKEN'))
