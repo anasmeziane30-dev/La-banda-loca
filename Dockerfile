@@ -4,9 +4,9 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt .
+# تثبيت الحزم مباشرة دفعة واحدة وبدون مشاكل
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir discord.py yt-dlp PyNaCl
 
 COPY . .
 
