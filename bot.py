@@ -2,6 +2,23 @@ import os
 import discord
 from discord.ext import commands
 import yt_dlp
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+
+# سيرفر وهمي صغير لإرضاء منصة Render ومنع خطأ البورتات
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), DummyHandler)
+    server.serve_forever()
+
+# تشغيل السيرفر الوهمي في الخلفية
+threading.Thread(target=run_server, daemon=True).start()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -32,8 +49,6 @@ class SongSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        print(f"تم اختيار الأغنية برقم: {self.values[0]}") # للتأكد في السجلات
-
         try:
             song_index = int(self.values[0])
             selected_song = PRESET_SONGS[song_index]
@@ -94,6 +109,7 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # التأكد من استقبال كلمة play! بشكل دقيق بغض النظر عن المسافات
     if message.content.strip().lower() == "play!":
         embed = discord.Embed(
             title="🔴 Ultras Fanatic Reds - راديو الأغاني الرسمية",
@@ -103,8 +119,6 @@ async def on_message(message):
         
         view = SongSelectView()
         await message.channel.send(embed=embed, view=view)
-
-    await bot.process_commands(message)
 
 token = os.getenv("TOKEN")
 if not token:
