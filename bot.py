@@ -1,3 +1,4 @@
+import os
 import discord
 from discord.ext import commands
 
@@ -8,14 +9,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # قائمة الأناشيد مع روابط التحميل المباشرة من Google Drive
 SONGS = {
     "اليد فاليد": "https://drive.google.com/uc?export=download&id=1H3Esa2sWouZrtkOQFKGwVRdkifomMdMP",
-    # يمكنك إضافة باقي الأناشيد هنا بنفس الطريقة:
-    # "اسم النشيد 2": "رابط_التحميل_المباشر",
+    # يمكنك إضافة باقي الأناشيد هنا لاحقاً بنفس الشكل:
+    # "اسم النشيد": "رابط_التحميل_المباشر",
 }
 
 # تصميم القائمة المنسدلة
 class SongSelect(discord.ui.Select):
     def __init__(self):
-        # إنشاء الخيارات بناءً على أسماء الأناشيد الموجودة
         options = [
             discord.SelectOption(label=song_name, description="تشغيل هذا النشيد 🔴⚪")
             for song_name in SONGS.keys()
@@ -73,4 +73,6 @@ async def leave(ctx):
 async def on_ready():
     print(f"Logged in as {bot.user}")
 
-# bot.run("YOUR_BOT_TOKEN")
+# تشغيل البوت بأمان باستخدام متغير البيئة من Render
+TOKEN = os.getenv("DISCORD_TOKEN")
+bot.run(TOKEN)
