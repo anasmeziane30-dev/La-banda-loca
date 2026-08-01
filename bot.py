@@ -94,7 +94,7 @@ async def lock(ctx):
         description="تم إيقاف الكتابة في هذه القناة مؤقتاً.",
         color=discord.Color.dark_orange()
     )
-    embed.set_footer(text=fبواسطة: {ctx.author.name})
+    embed.set_footer(text=f"بواسطة: {ctx.author.name}")
     await ctx.send(embed=embed)
 
 @lock.error
