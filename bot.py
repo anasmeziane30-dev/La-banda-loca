@@ -82,5 +82,43 @@ async def timeout(ctx, member: discord.Member, minutes: int, *, reason=None):
     embed.set_footer(text=f"بواسطة: {ctx.author.name}")
     await ctx.send(embed=embed)
 
+# --- 4. أوامر غلق وفتح القنوات (Lock / Unlock) ---
+
+@bot.command(name="lock")
+@commands.has_permissions(manage_channels=True)
+async def lock(ctx):
+    """قفل القناة الحالية لمنع الأعضاء من الكتابة"""
+    await ctx.channel.set_permissions(ctx.guild.default_role, send_messages=False)
+    embed = discord.Embed(
+        title="🔒 تم قفل القناة",
+        description="تم إيقاف الكتابة في هذه القناة مؤقتاً.",
+        color=discord.Color.dark_orange()
+    )
+    embed.set_footer(text=fبواسطة: {ctx.author.name})
+    await ctx.send(embed=embed)
+
+@lock.error
+async def lock_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ عذراً، لا تمتلك صلاحية `إدارة القنوات` لاستخدام هذا الأمر.")
+
+@bot.command(name="unlock")
+@commands.has_permissions(manage_channels=True)
+async def unlock(ctx):
+    """فتح القناة الحالية والسماح للأعضاء بالكتابة"""
+    await ctx.channel.set_permissions(ctx.guild.default_role, send_messages=True)
+    embed = discord.Embed(
+        title="🔓 تم فتح القناة",
+        description="تم السماح للكتابة في هذه القناة مرة أخرى.",
+        color=discord.Color.blue()
+    )
+    embed.set_footer(text=f"بواسطة: {ctx.author.name}")
+    await ctx.send(embed=embed)
+
+@unlock.error
+async def unlock_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ عذراً، لا تمتلك صلاحية `إدارة القنوات` لاستخدام هذا الأمر.")
+
 # تشغيل البوت
 bot.run(TOKEN)
